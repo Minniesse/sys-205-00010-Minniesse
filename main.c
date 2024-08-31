@@ -6,6 +6,8 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 
+#define BUF_LEN 80 
+
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("A simple character device driver");
 MODULE_AUTHOR("... <...@cmkl.ac.th>");
@@ -29,6 +31,7 @@ static const struct file_operations heartydev_fops = {
 dev_t dev = 0;
 static struct class *heartydev_class = NULL;
 static struct cdev heartydev_cdev;
+static char message[BUF_LEN + 1]; 
 
 static int heartydev_uevent(struct device *dev, struct kobj_uevent_env *env) {
     add_uevent_var(env, "DEVMODE=%#o", 0666);
@@ -41,6 +44,7 @@ static int __init heartydev_init(void) {
         return -1;
     }
 
+    // ********* Kernel Version 5.8.0-63-generic *********
     heartydev_class = class_create(THIS_MODULE, "heartydev");
     heartydev_class->dev_uevent = heartydev_uevent;
     cdev_init(&heartydev_cdev, &heartydev_fops);
@@ -49,6 +53,7 @@ static int __init heartydev_init(void) {
                   "heartydev");
 
     printk(KERN_ALERT "heartydev registered\n");
+
     return 0;
 }
 
@@ -81,11 +86,19 @@ static ssize_t heartydev_read(struct file *file, char __user *buf, size_t count,
     return 0;
 }
 
+
 static ssize_t heartydev_write(struct file *file, const char __user *buf,
                                size_t count, loff_t *offset) {
+    int i; 
+ 
+    printk("device_write(%p,%p,%ld)", file, buf, count); 
+ 
+    for (i = 0; i < count && i < BUF_LEN; i++) 
+        get_user(message[i], buf + i); 
+        
     printk("heartydev_write\n");
-    return count;
-}
+    return i; 
+} 
 
 module_init(heartydev_init);
 module_exit(heartydev_exit);
