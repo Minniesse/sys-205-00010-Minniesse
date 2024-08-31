@@ -82,8 +82,21 @@ static long heartydev_ioctl(struct file *file, unsigned int cmd,
 
 static ssize_t heartydev_read(struct file *file, char __user *buf, size_t count,
                               loff_t *offset) {
+    int bytes_read;
+    const char *message_ptr = message; 
+    if (!*(message_ptr + *offset)) {
+        *offset = 0;
+        return 0;
+    }
+    while (count && *message_ptr) { 
+        put_user(*(message_ptr++), buf++); 
+        count--; 
+        bytes_read++; 
+    }
+    printk("Read %d bytes, %ld left\n", bytes_read, count); 
+    *offset += bytes_read;  
     printk("heartydev_read\n");
-    return 0;
+    return bytes_read;
 }
 
 
