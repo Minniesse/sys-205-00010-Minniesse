@@ -19,6 +19,9 @@
 #define MAJOR_NUM 100 
 #define MESSAGE_MAX_LEN 256
 
+#define DEBUG_PRINT(fmt, args...) \
+    printk(KERN_DEBUG "heartydev [%lld]: " fmt, ktime_get_real_ns(), ##args)
+
 /* define the IOCTL's message of the device driver*/
 #define HEARTYDEV_WRITE_CNT _IOW(MAJOR_NUM, 0, char *) 
 #define HEARTYDEV_READ_CNT _IOR(MAJOR_NUM, 1, char *) 
@@ -68,6 +71,7 @@ static int heartydev_uevent(struct device *dev, struct kobj_uevent_env *env) {
 }
 
 static int __init heartydev_init(void) {
+    printk(KERN_INFO "----heartydev INIT START----\n");
     if (alloc_chrdev_region(&dev, 0, 1, "heartydev") < 0) {
         printk(KERN_ALERT "heartydev registration failed\n");
         return -1;
@@ -89,13 +93,13 @@ static int __init heartydev_init(void) {
     device_create(heartydev_class, NULL, MKDEV(MAJOR(dev), 0), NULL,
                   "heartydev");
 
-    printk(KERN_ALERT "heartydev registered\n");
+    // printk(KERN_ALERT "heartydev registered\n");
+    printk(KERN_INFO "----heartydev INIT END----\n");
 
     return 0;
 }
 
 static void __exit heartydev_exit(void) {
-    kfree(message);
     device_destroy(heartydev_class, MKDEV(MAJOR(dev), 0));
     class_unregister(heartydev_class);
     class_destroy(heartydev_class);
@@ -109,6 +113,9 @@ static int heartydev_open(struct inode *inode, struct file *file) {
 
 static int heartydev_release(struct inode *inode, struct file *file) {
     printk("heartydev_release\n");
+    printk(KERN_DEBUG "heartydev: Freeing message buffer\n");
+    kfree(message);
+    printk(KERN_INFO "heartydev: Total writes: %d, Total reads: %d\n", write_count, read_count);
     return 0;
 }
 
@@ -188,7 +195,7 @@ static ssize_t heartydev_write(struct file *file, const char __user *buf,
     size_t new_capacity;
 
     printk("heartydev_write called\n");
-    printk("device_write(%p,%p,%zu)", file, buf, count);
+    // printk("device_write(%p,%p,%zu)", file, buf, count);
 
     // Check if we need to increase the buffer size
     if (count > message_capacity) {
