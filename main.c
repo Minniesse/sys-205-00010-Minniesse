@@ -104,6 +104,8 @@ static void __exit heartydev_exit(void) {
     class_unregister(heartydev_class);
     class_destroy(heartydev_class);
     unregister_chrdev_region(MKDEV(MAJOR(dev), 0), MINORMASK);
+    printk(KERN_DEBUG "----heartydev memory free----\n");
+    kfree(message);
 }
 
 static int heartydev_open(struct inode *inode, struct file *file) {
@@ -113,8 +115,6 @@ static int heartydev_open(struct inode *inode, struct file *file) {
 
 static int heartydev_release(struct inode *inode, struct file *file) {
     printk("heartydev_release\n");
-    printk(KERN_DEBUG "heartydev: Freeing message buffer\n");
-    kfree(message);
     printk(KERN_INFO "heartydev: Total writes: %d, Total reads: %d\n", write_count, read_count);
     return 0;
 }
