@@ -145,38 +145,41 @@ static int heartydev_release(struct inode *inode, struct file *file) {
 
 static long heartydev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-    int ret = 0;
+    // int ret = 0;
+    // size_t len;
     char __user *user_buf;
-    size_t len;
     int mode;
 
     switch (cmd) {
     case HEARTYDEV_WRITE_CNT:
-        user_buf = (char __user *)arg;
-        len = strnlen_user(user_buf, MESSAGE_MAX_LEN);
-        if (len == 0 || len > MESSAGE_MAX_LEN) {
-            pr_err("heartydev: Invalid input length\n");
-            return -EINVAL;
-        }
-        if (!access_ok(user_buf, len)) {
-            pr_err("heartydev: Invalid user space pointer\n");
-            return -EFAULT;
-        }
-        ret = heartydev_write(file, user_buf, len - 1, NULL);  // -1 to remove null terminator
-        if (ret < 0) {
-            pr_err("heartydev: Write failed with error %d\n", ret);
-            return ret;
-        }
-        return ret, write_count;
+        // user_buf = (char __user *)arg;
+        // len = strnlen_user(user_buf, MESSAGE_MAX_LEN);
+        // if (len == 0 || len > MESSAGE_MAX_LEN) {
+        //     pr_err("heartydev: Invalid input length\n");
+        //     return -EINVAL;
+        // }
+        // if (!access_ok(user_buf, len)) {
+        //     pr_err("heartydev: Invalid user space pointer\n");
+        //     return -EFAULT;
+        // }
+        // ret = heartydev_write(file, user_buf, len - 1, NULL);  // -1 to remove null terminator
+        // if (ret < 0) {
+        //     pr_err("heartydev: Write failed with error %d\n", ret);
+        //     return ret;
+        // }
+        // get_user(write_count, (int __user *)arg);
+        return write_count;
 
     case HEARTYDEV_READ_CNT:
-        user_buf = (char __user *)arg;
-        if (!access_ok(user_buf, message_len)) {
-            pr_err("heartydev: Invalid user space pointer for read\n");
-            return -EFAULT;
-        }
-        ret = heartydev_read(file, user_buf, message_len, NULL);
-        return ret, read_count;
+        // user_buf = (char __user *)arg;
+        // if (!access_ok(user_buf, message_len)) {
+        //     pr_err("heartydev: Invalid user space pointer for read\n");
+        //     return -EFAULT;
+        // }
+        // ret = heartydev_read(file, user_buf, message_len, NULL);
+        // put_user(read_count, (int __user *)arg);
+        // printk("heartydev: Read count %d\n", read_count);
+        return read_count;
 
     case HEARTYDEV_BUF_LEN:
         if (!access_ok((int __user *)arg, sizeof(int))) {
@@ -187,7 +190,8 @@ static long heartydev_ioctl(struct file *file, unsigned int cmd, unsigned long a
             pr_err("heartydev: Failed to copy buffer length to user space\n");
             return -EFAULT;
         }
-        printk("heartydev: Buffer length is %d\n", message_len);
+        // printk("heartydev: Buffer length is %d\n", message_len);
+        // put_user(message_len, (int __user *)arg);
         return message_len;
     
     case HEARTYDEV_SET_MODE:
@@ -267,7 +271,7 @@ static ssize_t heartydev_read(struct file *file, char __user *buf, size_t count,
     pr_debug("heartydev: Read %zd bytes, read_count=%d\n", bytes_to_read, read_count);
     printk("heartydev: Read count %d\n", read_count);
 
-    return bytes_to_read, read_count;
+    return bytes_to_read;
 }
 
 static ssize_t heartydev_write(struct file *file, const char __user *buf,
@@ -290,7 +294,7 @@ static ssize_t heartydev_write(struct file *file, const char __user *buf,
     // printk("heartydev: Wrote %zu bytes\n", message_len);
     printk("heartydev: Write count %d\n", write_count);
 
-    return message_len, write_count;
+    return message_len;
 }
 
 module_init(heartydev_init);
