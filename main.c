@@ -57,6 +57,7 @@ static long heartydev_ioctl(struct file *file, unsigned int cmd, unsigned long a
 static ssize_t heartydev_read(struct file *file, char __user *buf, size_t count, loff_t *offset);
 static ssize_t heartydev_write(struct file *file, const char __user *buf, size_t count, loff_t *offset);
 
+/* Define the file operations */
 static const struct file_operations heartydev_fops = {
     .open = heartydev_open,
     .release = heartydev_release,
@@ -64,33 +65,39 @@ static const struct file_operations heartydev_fops = {
     .read = heartydev_read,
     .write = heartydev_write};
 
+/* Define the global variables */
 dev_t dev = 0;
 static struct class *heartydev_class = NULL;
 static struct cdev heartydev_cdev;
 
-/* functions called */
+/* functions time called */
 static int read_count = 0;
 static int write_count = 0;
 static int current_mode = HEARTYDEV_UPPER;
 
+/* message buffer */
 static char *message = NULL;
 static size_t message_capacity = 0;
 static int message_len = 0;
 static atomic_t already_open = ATOMIC_INIT(CDEV_NOT_USED); 
 
-/**
+/** 
  * @brief uevent function for the device class
  * 
  * @param dev the device
  * @param env the environment
- * @return int 0
+ * @return int 0 if successful
  */
-
 static int heartydev_uevent(struct device *dev, struct kobj_uevent_env *env) {
     add_uevent_var(env, "DEVMODE=%#o", 0666);
     return 0;
 }
 
+/** 
+ * @brief Initialize the device driver
+ * 
+ * @return int 0 if successful
+ */
 static int __init heartydev_init(void) {
     printk(KERN_INFO "----heartydev INIT START----\n");
     if (alloc_chrdev_region(&dev, 0, 1, "heartydev") < 0) {
@@ -116,13 +123,14 @@ static int __init heartydev_init(void) {
     cdev_add(&heartydev_cdev, MKDEV(MAJOR(dev), 0), 1);
     device_create(heartydev_class, NULL, MKDEV(MAJOR(dev), 0), NULL,
                   "heartydev");
-
-    // printk(KERN_ALERT "heartydev registered\n");
     printk(KERN_INFO "----heartydev INIT END----\n");
 
     return 0;
 }
 
+/** 
+ * @brief Exit the device driver
+ */
 static void __exit heartydev_exit(void) {
     device_destroy(heartydev_class, MKDEV(MAJOR(dev), 0));
     class_unregister(heartydev_class);
@@ -132,53 +140,51 @@ static void __exit heartydev_exit(void) {
     kfree(message);
 }
 
+/** 
+ * @brief Open the device driver
+ * 
+ * @param inode the inode
+ * @param file the file
+ * @return int 0 if successful
+ */
 static int heartydev_open(struct inode *inode, struct file *file) {
     printk("heartydev_open\n");
     return 0;
 }
 
+/** 
+ * @brief Release the device driver
+ * 
+ * @param inode the inode
+ * @param file the file
+ * @return int 0 if successful
+ */
 static int heartydev_release(struct inode *inode, struct file *file) {
     printk("heartydev_release\n");
     printk(KERN_INFO "heartydev: Total writes: %d, Total reads: %d\n", write_count, read_count);
     return 0;
 }
 
+/** 
+ * @brief IOCTL function for the device driver
+ * 
+ * @param file the file
+ * @param cmd the command
+ * @param arg the argument
+ * @return long 0 if successful
+ */
 static long heartydev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-    // int ret = 0;
-    // size_t len;
     char __user *user_buf;
     int mode;
 
     switch (cmd) {
     case HEARTYDEV_WRITE_CNT:
-        // user_buf = (char __user *)arg;
-        // len = strnlen_user(user_buf, MESSAGE_MAX_LEN);
-        // if (len == 0 || len > MESSAGE_MAX_LEN) {
-        //     pr_err("heartydev: Invalid input length\n");
-        //     return -EINVAL;
-        // }
-        // if (!access_ok(user_buf, len)) {
-        //     pr_err("heartydev: Invalid user space pointer\n");
-        //     return -EFAULT;
-        // }
-        // ret = heartydev_write(file, user_buf, len - 1, NULL);  // -1 to remove null terminator
-        // if (ret < 0) {
-        //     pr_err("heartydev: Write failed with error %d\n", ret);
-        //     return ret;
-        // }
-        // get_user(write_count, (int __user *)arg);
+        printk("heartydev: Write count %d\n", write_count);
         return write_count;
 
     case HEARTYDEV_READ_CNT:
-        // user_buf = (char __user *)arg;
-        // if (!access_ok(user_buf, message_len)) {
-        //     pr_err("heartydev: Invalid user space pointer for read\n");
-        //     return -EFAULT;
-        // }
-        // ret = heartydev_read(file, user_buf, message_len, NULL);
-        // put_user(read_count, (int __user *)arg);
-        // printk("heartydev: Read count %d\n", read_count);
+        printk("heartydev: Read count %d\n", read_count);
         return read_count;
 
     case HEARTYDEV_BUF_LEN:
@@ -186,12 +192,11 @@ static long heartydev_ioctl(struct file *file, unsigned int cmd, unsigned long a
             pr_err("heartydev: Invalid user space pointer for buffer length\n");
             return -EFAULT;
         }
-        if (put_user(message_len, (int __user *)arg)) {
+        if (copy_to_user((int __user *)arg, &message_len, sizeof(int))) {
             pr_err("heartydev: Failed to copy buffer length to user space\n");
             return -EFAULT;
         }
-        // printk("heartydev: Buffer length is %d\n", message_len);
-        // put_user(message_len, (int __user *)arg);
+        printk("heartydev: Buffer length is %d\n", message_len);
         return message_len;
     
     case HEARTYDEV_SET_MODE:
@@ -212,7 +217,14 @@ static long heartydev_ioctl(struct file *file, unsigned int cmd, unsigned long a
     }
 }
 
-
+/** 
+ * @brief Read function for the device driver
+ * 
+ * @param file the file
+ * @param buf the buffer
+ * @param count the count
+ * @param offset the offset
+ */
 static ssize_t heartydev_read(struct file *file, char __user *buf, size_t count,
                               loff_t *offset) {
     ssize_t bytes_to_read;
@@ -271,14 +283,21 @@ static ssize_t heartydev_read(struct file *file, char __user *buf, size_t count,
     pr_debug("heartydev: Read %zd bytes, read_count=%d\n", bytes_to_read, read_count);
     printk("heartydev: Read count %d\n", read_count);
 
-    return bytes_to_read;
+    return 0;
 }
 
+/** 
+ * @brief Write function for the device driver
+ * 
+ * @param file the file
+ * @param buf the buffer
+ * @param count the count
+ * @param offset the offset
+ */
 static ssize_t heartydev_write(struct file *file, const char __user *buf,
                                size_t count, loff_t *offset) {
 
     printk("heartydev_write called\n");
-    // printk("device_write(%p,%p,%zu)", file, buf, count);
 
     if (count > MESSAGE_MAX_LEN - 1)
         count = MESSAGE_MAX_LEN - 1;
@@ -291,7 +310,6 @@ static ssize_t heartydev_write(struct file *file, const char __user *buf,
     message[count] = '\0';
     message_len = count;
     write_count++;
-    // printk("heartydev: Wrote %zu bytes\n", message_len);
     printk("heartydev: Write count %d\n", write_count);
 
     return message_len;
